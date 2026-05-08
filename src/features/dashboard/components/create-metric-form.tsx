@@ -52,7 +52,7 @@ export function CreateMetricForm() {
       <CardHeader>
         <CardTitle>Add metric</CardTitle>
         <CardDescription>
-          Create user-owned metrics for your dashboard.
+          Create workspace-owned metrics for your dashboard.
         </CardDescription>
       </CardHeader>
 

@@ -2,12 +2,12 @@ import { prisma } from "@/lib/prisma"
 
 import type { DashboardMetric } from "@/features/dashboard/types/metric"
 
-export async function getUserMetrics(
-  userId: string
+export async function getWorkspaceMetrics(
+  workspaceId: string
 ): Promise<DashboardMetric[]> {
   return prisma.metric.findMany({
     where: {
-      userId,
+      workspaceId,
     },
     orderBy: {
       createdAt: "desc",

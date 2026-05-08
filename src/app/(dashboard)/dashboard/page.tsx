@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation"
 
+import { Card, CardContent } from "@/components/ui/card"
 import { auth } from "@/lib/auth"
 import {
   CreateMetricForm,
 } from "@/features/dashboard/components/create-metric-form"
 import { DashboardCard } from "@/features/dashboard/components/dashboard-card"
-import { getUserMetrics } from "@/features/dashboard/queries/get-user-metrics"
-import { Card, CardContent } from "@/components/ui/card"
+import { getWorkspaceMetrics } from "@/features/dashboard/queries/get-workspace-metrics"
+import { getActiveWorkspace } from "@/features/workspaces/queries/get-active-workspace"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -15,7 +16,21 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const metrics = await getUserMetrics(session.user.id)
+  const workspace = await getActiveWorkspace(session.user.id)
+
+  if (!workspace) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <p className="text-sm text-muted-foreground">
+            No active workspace found for this account yet.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const metrics = await getWorkspaceMetrics(workspace.id)
   const totalMetricValue = metrics.reduce(
     (sum, metric) => sum + metric.value,
     0
@@ -29,8 +44,12 @@ export default async function DashboardPage() {
           Dashboard overview
         </h1>
 
+        <h2 className="text-lg font-medium">
+          {workspace.name}
+        </h2>
+
         <p className="text-muted-foreground">
-          Track the metrics owned by {session.user.email ?? "your account"}.
+          Track metrics shared inside {workspace.name}.
         </p>
       </section>
 
@@ -39,7 +58,7 @@ export default async function DashboardPage() {
           <DashboardCard
             title="Tracked metrics"
             value={metrics.length}
-            description="Total metrics linked to your account."
+            description="Total metrics linked to this workspace."
           />
 
           <DashboardCard
@@ -65,11 +84,11 @@ export default async function DashboardPage() {
       <section className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-xl font-semibold">
-            Your metrics
+            Workspace metrics
           </h2>
 
           <p className="text-sm text-muted-foreground">
-            Every record below is filtered by the authenticated user.
+            Every record below is filtered by the active workspace.
           </p>
         </div>
 

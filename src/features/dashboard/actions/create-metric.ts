@@ -9,6 +9,7 @@ import {
   createMetricSchema,
   type CreateMetricInput,
 } from "@/features/dashboard/schemas/metric-schema"
+import { getActiveWorkspace } from "@/features/workspaces/queries/get-active-workspace"
 
 export async function createMetric(input: CreateMetricInput) {
   const session = await auth()
@@ -17,13 +18,19 @@ export async function createMetric(input: CreateMetricInput) {
     throw new Error("Unauthorized")
   }
 
+  const workspace = await getActiveWorkspace(session.user.id)
+
+  if (!workspace) {
+    throw new Error("No active workspace found.")
+  }
+
   const { title, value } = createMetricSchema.parse(input)
 
   const metric = await prisma.metric.create({
     data: {
       title,
       value,
-      userId: session.user.id,
+      workspaceId: workspace.id,
     },
   })
 

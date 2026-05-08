@@ -4,5 +4,5 @@ export interface DashboardMetric {
   value: number
   createdAt: Date
   updatedAt: Date
-  userId: string
+  workspaceId: string
 }
