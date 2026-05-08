@@ -3,6 +3,9 @@ import { redirect } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { auth } from "@/lib/auth"
 import { canManageWorkspace, isWorkspaceOwner } from "@/features/auth/utils/permissions"
+import { SubscriptionCard } from "@/features/billing/components/subscription-card"
+import { getWorkspaceSubscription } from "@/features/billing/queries/get-workspace-subscription"
+import { PLAN_LIMITS } from "@/features/billing/utils/plans"
 import {
   CreateMetricForm,
 } from "@/features/dashboard/components/create-metric-form"
@@ -40,6 +43,7 @@ export default async function DashboardPage() {
   const metrics = await getWorkspaceMetrics(workspace.id)
   const members = await getWorkspaceMembers(workspace.id)
   const invitations = await getWorkspaceInvitations(workspace.id)
+  const subscription = await getWorkspaceSubscription(workspace.id)
   const totalMetricValue = metrics.reduce(
     (sum, metric) => sum + metric.value,
     0
@@ -48,6 +52,9 @@ export default async function DashboardPage() {
   const canCreateMetrics = canManageWorkspace(activeMembership.role)
   const canManageMembers = isWorkspaceOwner(activeMembership.role)
   const canInviteMembers = canManageWorkspace(activeMembership.role)
+  const canManageBilling = canManageWorkspace(activeMembership.role)
+  const currentPlan = subscription?.plan ?? "FREE"
+  const currentLimits = PLAN_LIMITS[currentPlan]
 
   return (
     <div className="space-y-8">
@@ -95,6 +102,47 @@ export default async function DashboardPage() {
         </div>
 
         <CreateMetricForm canCreateMetrics={canCreateMetrics} />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold">
+              Billing and plan usage
+            </h2>
+
+            <p className="text-sm text-muted-foreground">
+              Workspace limits now follow the active subscription plan.
+            </p>
+          </div>
+
+          <SubscriptionCard
+            plan={currentPlan}
+            metricsUsed={metrics.length}
+            metricsLimit={currentLimits.metrics}
+            membersUsed={members.length}
+            membersLimit={currentLimits.members}
+            canManageBilling={canManageBilling}
+          />
+        </div>
+
+        <Card>
+          <CardContent className="py-8">
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                FREE limits metrics to 5 and members to 3.
+              </p>
+
+              <p>
+                PRO expands capacity for growing teams and dashboards.
+              </p>
+
+              <p>
+                ENTERPRISE removes the default usage caps with mock local billing.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">

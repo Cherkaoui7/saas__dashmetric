@@ -9,6 +9,8 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 import { canManageWorkspace } from "@/features/auth/utils/permissions"
+import { getWorkspaceSubscription } from "@/features/billing/queries/get-workspace-subscription"
+import { PLAN_LIMITS } from "@/features/billing/utils/plans"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 
 const invitibleRoles = new Set<WorkspaceRole>(["ADMIN", "MEMBER"])
@@ -37,6 +39,24 @@ export async function inviteMember(
 
   if (!invitibleRoles.has(role)) {
     throw new Error("Invalid role")
+  }
+
+  const subscription = await getWorkspaceSubscription(membership.workspaceId)
+
+  if (!subscription?.active) {
+    throw new Error("Workspace subscription is inactive")
+  }
+
+  const memberCount = await prisma.membership.count({
+    where: {
+      workspaceId: membership.workspaceId,
+    },
+  })
+
+  if (
+    memberCount >= PLAN_LIMITS[subscription.plan].members
+  ) {
+    throw new Error("Member limit reached. Upgrade required.")
   }
 
   const currentUser = await prisma.user.findUnique({

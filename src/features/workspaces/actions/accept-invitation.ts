@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+import { getWorkspaceSubscription } from "@/features/billing/queries/get-workspace-subscription"
+import { PLAN_LIMITS } from "@/features/billing/utils/plans"
+
 export async function acceptInvitation(token: string) {
   const session = await auth()
 
@@ -54,6 +57,24 @@ export async function acceptInvitation(token: string) {
 
   if (existingMembership) {
     throw new Error("You are already a member of this workspace")
+  }
+
+  const subscription = await getWorkspaceSubscription(invitation.workspaceId)
+
+  if (!subscription?.active) {
+    throw new Error("Workspace subscription is inactive")
+  }
+
+  const memberCount = await prisma.membership.count({
+    where: {
+      workspaceId: invitation.workspaceId,
+    },
+  })
+
+  if (
+    memberCount >= PLAN_LIMITS[subscription.plan].members
+  ) {
+    throw new Error("Member limit reached. Upgrade required.")
   }
 
   await prisma.$transaction([

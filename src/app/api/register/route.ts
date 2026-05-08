@@ -48,6 +48,13 @@ export async function POST(req: Request) {
                 },
             })
 
+            await tx.subscription.create({
+                data: {
+                    workspaceId: workspace.id,
+                    plan: "FREE",
+                },
+            })
+
             await tx.membership.create({
                 data: {
                     userId: createdUser.id,

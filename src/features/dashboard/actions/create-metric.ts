@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+import { getWorkspaceSubscription } from "@/features/billing/queries/get-workspace-subscription"
+import { PLAN_LIMITS } from "@/features/billing/utils/plans"
 import { canManageWorkspace } from "@/features/auth/utils/permissions"
 import {
   createMetricSchema,
@@ -27,6 +29,24 @@ export async function createMetric(input: CreateMetricInput) {
 
   if (!canManageWorkspace(membership.role)) {
     throw new Error("Forbidden")
+  }
+
+  const subscription = await getWorkspaceSubscription(membership.workspaceId)
+
+  if (!subscription?.active) {
+    throw new Error("Workspace subscription is inactive")
+  }
+
+  const metricCount = await prisma.metric.count({
+    where: {
+      workspaceId: membership.workspaceId,
+    },
+  })
+
+  if (
+    metricCount >= PLAN_LIMITS[subscription.plan].metrics
+  ) {
+    throw new Error("Metric limit reached. Upgrade required.")
   }
 
   const { title, value } = createMetricSchema.parse(input)
