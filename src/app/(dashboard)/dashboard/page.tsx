@@ -2,6 +2,12 @@ import { redirect } from "next/navigation"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { auth } from "@/lib/auth"
+import { AnalyticsGrid } from "@/features/analytics/components/analytics-grid"
+import { AnalyticsInsights } from "@/features/analytics/components/analytics-insights"
+import { MetricsChart } from "@/features/analytics/components/metrics-chart"
+import { getDashboardAnalytics } from "@/features/analytics/queries/get-dashboard-analytics"
+import { getMetricTrends } from "@/features/analytics/queries/get-metric-trends"
+import { buildAnalyticsInsights } from "@/features/analytics/services/build-analytics-insights"
 import { canManageWorkspace, isWorkspaceOwner } from "@/features/auth/utils/permissions"
 import { SubscriptionCard } from "@/features/billing/components/subscription-card"
 import { getWorkspaceSubscription } from "@/features/billing/queries/get-workspace-subscription"
@@ -41,14 +47,12 @@ export default async function DashboardPage() {
 
   const workspace = activeMembership.workspace
   const metrics = await getWorkspaceMetrics(workspace.id)
+  const analytics = await getDashboardAnalytics(workspace.id)
+  const trendData = await getMetricTrends(workspace.id)
+  const insights = buildAnalyticsInsights(analytics, trendData)
   const members = await getWorkspaceMembers(workspace.id)
   const invitations = await getWorkspaceInvitations(workspace.id)
   const subscription = await getWorkspaceSubscription(workspace.id)
-  const totalMetricValue = metrics.reduce(
-    (sum, metric) => sum + metric.value,
-    0
-  )
-  const latestMetric = metrics[0]
   const canCreateMetrics = canManageWorkspace(activeMembership.role)
   const canManageMembers = isWorkspaceOwner(activeMembership.role)
   const canInviteMembers = canManageWorkspace(activeMembership.role)
@@ -77,28 +81,18 @@ export default async function DashboardPage() {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <DashboardCard
-            title="Tracked metrics"
-            value={metrics.length}
-            description="Total metrics linked to this workspace."
-          />
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold">
+              Analytics snapshot
+            </h2>
 
-          <DashboardCard
-            title="Total value"
-            value={totalMetricValue}
-            description="Combined value across every saved metric."
-          />
+            <p className="text-sm text-muted-foreground">
+              Aggregated KPI values derived from workspace metrics.
+            </p>
+          </div>
 
-          <DashboardCard
-            title={latestMetric?.title ?? "Latest entry"}
-            value={latestMetric?.value ?? 0}
-            description={
-              latestMetric
-                ? "Most recent metric added to your dashboard."
-                : "Create your first metric to start filling the dashboard."
-            }
-          />
+          <AnalyticsGrid analytics={analytics} />
         </div>
 
         <CreateMetricForm canCreateMetrics={canCreateMetrics} />
@@ -108,41 +102,26 @@ export default async function DashboardPage() {
         <div className="space-y-4">
           <div className="space-y-1">
             <h2 className="text-xl font-semibold">
-              Billing and plan usage
+              Trend analysis
             </h2>
 
             <p className="text-sm text-muted-foreground">
-              Workspace limits now follow the active subscription plan.
+              Chart-ready analytics and interpretive KPI insights.
             </p>
           </div>
 
-          <SubscriptionCard
-            plan={currentPlan}
-            metricsUsed={metrics.length}
-            metricsLimit={currentLimits.metrics}
-            membersUsed={members.length}
-            membersLimit={currentLimits.members}
-            canManageBilling={canManageBilling}
-          />
+          <MetricsChart data={trendData} />
+          <AnalyticsInsights insights={insights} />
         </div>
 
-        <Card>
-          <CardContent className="py-8">
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>
-                FREE limits metrics to 5 and members to 3.
-              </p>
-
-              <p>
-                PRO expands capacity for growing teams and dashboards.
-              </p>
-
-              <p>
-                ENTERPRISE removes the default usage caps with mock local billing.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <SubscriptionCard
+          plan={currentPlan}
+          metricsUsed={metrics.length}
+          metricsLimit={currentLimits.metrics}
+          membersUsed={members.length}
+          membersLimit={currentLimits.members}
+          canManageBilling={canManageBilling}
+        />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
