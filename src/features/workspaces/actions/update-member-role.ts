@@ -1,0 +1,69 @@
+"use server"
+
+import { WorkspaceRole } from "@prisma/client"
+import { revalidatePath } from "next/cache"
+
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+
+import { isWorkspaceOwner } from "@/features/auth/utils/permissions"
+import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
+
+const assignableRoles = new Set<WorkspaceRole>(["ADMIN", "MEMBER"])
+
+export async function updateMemberRole(
+  membershipId: string,
+  role: WorkspaceRole
+) {
+  const session = await auth()
+
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized")
+  }
+
+  const currentMembership = await getActiveWorkspaceMembership(session.user.id)
+
+  if (!currentMembership) {
+    throw new Error("Membership not found")
+  }
+
+  if (!isWorkspaceOwner(currentMembership.role)) {
+    throw new Error("Forbidden")
+  }
+
+  if (!assignableRoles.has(role)) {
+    throw new Error("Invalid role")
+  }
+
+  const targetMembership = await prisma.membership.findFirst({
+    where: {
+      id: membershipId,
+      workspaceId: currentMembership.workspaceId,
+    },
+  })
+
+  if (!targetMembership) {
+    throw new Error("Member not found")
+  }
+
+  if (targetMembership.id === currentMembership.id) {
+    throw new Error("You cannot change your own role")
+  }
+
+  if (targetMembership.role === "OWNER") {
+    throw new Error("Owner role cannot be changed")
+  }
+
+  const updatedMembership = await prisma.membership.update({
+    where: {
+      id: membershipId,
+    },
+    data: {
+      role,
+    },
+  })
+
+  revalidatePath("/dashboard")
+
+  return updatedMembership
+}

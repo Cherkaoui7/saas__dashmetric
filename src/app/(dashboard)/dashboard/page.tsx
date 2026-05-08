@@ -2,12 +2,15 @@ import { redirect } from "next/navigation"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { auth } from "@/lib/auth"
+import { canManageWorkspace, isWorkspaceOwner } from "@/features/auth/utils/permissions"
 import {
   CreateMetricForm,
 } from "@/features/dashboard/components/create-metric-form"
 import { DashboardCard } from "@/features/dashboard/components/dashboard-card"
 import { getWorkspaceMetrics } from "@/features/dashboard/queries/get-workspace-metrics"
-import { getActiveWorkspace } from "@/features/workspaces/queries/get-active-workspace"
+import { getWorkspaceMembers } from "@/features/workspaces/queries/get-workspace-members"
+import { MembersTable } from "@/features/workspaces/components/members-table"
+import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -16,9 +19,9 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const workspace = await getActiveWorkspace(session.user.id)
+  const activeMembership = await getActiveWorkspaceMembership(session.user.id)
 
-  if (!workspace) {
+  if (!activeMembership) {
     return (
       <Card>
         <CardContent className="py-8">
@@ -30,12 +33,16 @@ export default async function DashboardPage() {
     )
   }
 
+  const workspace = activeMembership.workspace
   const metrics = await getWorkspaceMetrics(workspace.id)
+  const members = await getWorkspaceMembers(workspace.id)
   const totalMetricValue = metrics.reduce(
     (sum, metric) => sum + metric.value,
     0
   )
   const latestMetric = metrics[0]
+  const canCreateMetrics = canManageWorkspace(activeMembership.role)
+  const canManageMembers = isWorkspaceOwner(activeMembership.role)
 
   return (
     <div className="space-y-8">
@@ -50,6 +57,10 @@ export default async function DashboardPage() {
 
         <p className="text-muted-foreground">
           Track metrics shared inside {workspace.name}.
+        </p>
+
+        <p className="text-sm text-muted-foreground">
+          Signed in as {activeMembership.role}.
         </p>
       </section>
 
@@ -78,7 +89,7 @@ export default async function DashboardPage() {
           />
         </div>
 
-        <CreateMetricForm />
+        <CreateMetricForm canCreateMetrics={canCreateMetrics} />
       </section>
 
       <section className="space-y-4">
@@ -117,6 +128,25 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         )}
+      </section>
+
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold">
+            Workspace members
+          </h2>
+
+          <p className="text-sm text-muted-foreground">
+            Owners can manage roles. Admins and members can only review the
+            roster.
+          </p>
+        </div>
+
+        <MembersTable
+          members={members}
+          canManageMembers={canManageMembers}
+          currentMembershipId={activeMembership.id}
+        />
       </section>
     </div>
   )

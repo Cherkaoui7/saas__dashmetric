@@ -1,21 +1,7 @@
-import { prisma } from "@/lib/prisma"
+import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 
 export async function getActiveWorkspace(userId: string) {
-  const memberships = await prisma.membership.findMany({
-    where: {
-      userId,
-    },
-    include: {
-      workspace: true,
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  })
+  const membership = await getActiveWorkspaceMembership(userId)
 
-  const ownerMembership = memberships.find(
-    (membership) => membership.role === "OWNER"
-  )
-
-  return ownerMembership?.workspace ?? memberships[0]?.workspace ?? null
+  return membership?.workspace ?? null
 }

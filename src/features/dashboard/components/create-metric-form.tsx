@@ -16,7 +16,13 @@ import { Label } from "@/components/ui/label"
 
 import { createMetric } from "@/features/dashboard/actions/create-metric"
 
-export function CreateMetricForm() {
+interface CreateMetricFormProps {
+  canCreateMetrics: boolean
+}
+
+export function CreateMetricForm({
+  canCreateMetrics,
+}: CreateMetricFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState("")
   const [value, setValue] = useState("")
@@ -26,6 +32,11 @@ export function CreateMetricForm() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+
+    if (!canCreateMetrics) {
+      setError("Only workspace owners and admins can create metrics.")
+      return
+    }
 
     startTransition(async () => {
       try {
@@ -52,7 +63,9 @@ export function CreateMetricForm() {
       <CardHeader>
         <CardTitle>Add metric</CardTitle>
         <CardDescription>
-          Create workspace-owned metrics for your dashboard.
+          {canCreateMetrics
+            ? "Create workspace-owned metrics for your dashboard."
+            : "Members have read-only access in this workspace."}
         </CardDescription>
       </CardHeader>
 
@@ -66,6 +79,7 @@ export function CreateMetricForm() {
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Revenue"
               maxLength={50}
+              disabled={!canCreateMetrics || isPending}
               required
             />
           </div>
@@ -81,6 +95,7 @@ export function CreateMetricForm() {
               value={value}
               onChange={(event) => setValue(event.target.value)}
               placeholder="1200"
+              disabled={!canCreateMetrics || isPending}
               required
             />
           </div>
@@ -91,7 +106,11 @@ export function CreateMetricForm() {
             </p>
           ) : null}
 
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={!canCreateMetrics || isPending}
+          >
             {isPending ? "Saving..." : "Create metric"}
           </Button>
         </form>
