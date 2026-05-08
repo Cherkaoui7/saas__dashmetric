@@ -36,8 +36,15 @@ export async function POST(req: Request) {
       },
     })
 
-    const userWithoutPassword = { ...user } as any
-    delete userWithoutPassword.password
+    const userWithoutPassword = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      image: user.image,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    }
 
     return NextResponse.json(userWithoutPassword)
   } catch {
