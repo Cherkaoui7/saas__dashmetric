@@ -1,3 +1,5 @@
+import { LogoutButton } from "@/features/auth/components/logout-button"
+
 export function DashboardHeader() {
   return (
     <header className="flex h-16 items-center justify-between border-b px-6">
@@ -6,7 +8,7 @@ export function DashboardHeader() {
       </h1>
 
       <div>
-        User
+        <LogoutButton />
       </div>
     </header>
   )
