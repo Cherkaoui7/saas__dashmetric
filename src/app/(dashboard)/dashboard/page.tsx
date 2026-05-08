@@ -22,6 +22,8 @@ import { InvitationsList } from "@/features/workspaces/components/invitations-li
 import { getWorkspaceMembers } from "@/features/workspaces/queries/get-workspace-members"
 import { MembersTable } from "@/features/workspaces/components/members-table"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
+import { ActivityFeed } from "@/features/activity/components/activity-feed"
+import { getWorkspaceActivities } from "@/features/activity/queries/get-workspace-activities"
 import { getWorkspaceInvitations } from "@/features/workspaces/queries/get-workspace-invitations"
 
 export default async function DashboardPage() {
@@ -47,6 +49,7 @@ export default async function DashboardPage() {
 
   const workspace = activeMembership.workspace
   const metrics = await getWorkspaceMetrics(workspace.id)
+  const activities = await getWorkspaceActivities(workspace.id)
   const analytics = await getDashboardAnalytics(workspace.id)
   const trendData = await getMetricTrends(workspace.id)
   const insights = buildAnalyticsInsights(analytics, trendData)
@@ -140,6 +143,20 @@ export default async function DashboardPage() {
         </div>
 
         <InviteMemberForm canInviteMembers={canInviteMembers} />
+      </section>
+
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold">
+            Workspace activity
+          </h2>
+
+          <p className="text-sm text-muted-foreground">
+            A chronological stream of events across the workspace.
+          </p>
+        </div>
+
+        <ActivityFeed activities={activities} />
       </section>
 
       <section className="space-y-4">

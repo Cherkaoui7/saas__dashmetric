@@ -20,6 +20,8 @@ model User {
   ownedWorkspaces Workspace[] @relation("WorkspaceOwner")
   memberships     Membership[]
   sentInvitations Invitation[] @relation("SentInvitations")
+  activities      Activity[]
+  notifications   Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -34,6 +36,7 @@ model Workspace {
   metrics     Metric[]
   invitations Invitation[]
   subscription Subscription?
+  activities  Activity[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -64,6 +67,14 @@ enum SubscriptionPlan {
   FREE
   PRO
   ENTERPRISE
+}
+
+enum ActivityType {
+  METRIC_CREATED
+  MEMBER_INVITED
+  MEMBER_JOINED
+  ROLE_UPDATED
+  SUBSCRIPTION_UPDATED
 }
 
 model Metric {
@@ -104,6 +115,32 @@ model Subscription {
   workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  type        ActivityType
+  message     String
+  workspaceId String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User         @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+
+  @@index([workspaceId])
+  @@index([actorId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Account {

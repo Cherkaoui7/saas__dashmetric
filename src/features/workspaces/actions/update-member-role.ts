@@ -7,6 +7,8 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 import { isWorkspaceOwner } from "@/features/auth/utils/permissions"
+import { createActivity } from "@/features/activity/services/create-activity"
+import { createNotification } from "@/features/notifications/services/create-notification"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 
 const assignableRoles = new Set<WorkspaceRole>(["ADMIN", "MEMBER"])
@@ -40,6 +42,9 @@ export async function updateMemberRole(
       id: membershipId,
       workspaceId: currentMembership.workspaceId,
     },
+    include: {
+      user: true,
+    },
   })
 
   if (!targetMembership) {
@@ -61,6 +66,19 @@ export async function updateMemberRole(
     data: {
       role,
     },
+  })
+
+  await createActivity({
+    type: "ROLE_UPDATED",
+    message: `${session.user.email} updated role of ${targetMembership.user.email} to ${role}`,
+    workspaceId: currentMembership.workspaceId,
+    actorId: session.user.id,
+  })
+
+  await createNotification({
+    title: "Role Updated",
+    message: `Your role in ${currentMembership.workspace.name} has been updated to ${role}`,
+    userId: targetMembership.userId,
   })
 
   revalidatePath("/dashboard")

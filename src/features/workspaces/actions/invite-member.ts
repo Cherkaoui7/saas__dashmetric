@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma"
 import { canManageWorkspace } from "@/features/auth/utils/permissions"
 import { getWorkspaceSubscription } from "@/features/billing/queries/get-workspace-subscription"
 import { PLAN_LIMITS } from "@/features/billing/utils/plans"
+import { createActivity } from "@/features/activity/services/create-activity"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 
 const invitibleRoles = new Set<WorkspaceRole>(["ADMIN", "MEMBER"])
@@ -132,6 +133,13 @@ export async function inviteMember(
       workspaceId: membership.workspaceId,
       invitedById: session.user.id,
     },
+  })
+
+  await createActivity({
+    type: "MEMBER_INVITED",
+    message: `${session.user.email} invited ${normalizedEmail} as ${role}`,
+    workspaceId: membership.workspaceId,
+    actorId: session.user.id,
   })
 
   revalidatePath("/dashboard")

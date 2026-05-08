@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma"
 
 import { canManageWorkspace } from "@/features/auth/utils/permissions"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
+import { createActivity } from "@/features/activity/services/create-activity"
 
 const upgradablePlans = new Set<SubscriptionPlan>([
   "PRO",
@@ -55,6 +56,13 @@ export async function upgradeWorkspacePlan(
       plan,
       active: true,
     },
+  })
+
+  await createActivity({
+    type: "SUBSCRIPTION_UPDATED",
+    message: `${session.user.email} upgraded workspace to ${plan}`,
+    workspaceId: membership.workspaceId,
+    actorId: session.user.id,
   })
 
   revalidatePath("/dashboard")

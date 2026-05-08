@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createActivity } from "@/features/activity/services/create-activity"
 
 import { getWorkspaceSubscription } from "@/features/billing/queries/get-workspace-subscription"
 import { PLAN_LIMITS } from "@/features/billing/utils/plans"
@@ -91,6 +92,13 @@ export async function acceptInvitation(token: string) {
       },
     }),
   ])
+
+  await createActivity({
+    type: "MEMBER_JOINED",
+    message: `${currentUser.email} joined the workspace`,
+    workspaceId: invitation.workspaceId,
+    actorId: session.user.id,
+  })
 
   revalidatePath("/dashboard")
   revalidatePath(`/invitations/${token}`)

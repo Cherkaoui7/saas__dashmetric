@@ -12,6 +12,7 @@ import {
   createMetricSchema,
   type CreateMetricInput,
 } from "@/features/dashboard/schemas/metric-schema"
+import { createActivity } from "@/features/activity/services/create-activity"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 
 export async function createMetric(input: CreateMetricInput) {
@@ -57,6 +58,13 @@ export async function createMetric(input: CreateMetricInput) {
       value,
       workspaceId: membership.workspaceId,
     },
+  })
+
+  await createActivity({
+    type: "METRIC_CREATED",
+    message: `${session.user.email} created a metric: ${title}`,
+    workspaceId: membership.workspaceId,
+    actorId: session.user.id,
   })
 
   revalidatePath("/dashboard")
