@@ -8,9 +8,12 @@ import {
 } from "@/features/dashboard/components/create-metric-form"
 import { DashboardCard } from "@/features/dashboard/components/dashboard-card"
 import { getWorkspaceMetrics } from "@/features/dashboard/queries/get-workspace-metrics"
+import { InviteMemberForm } from "@/features/workspaces/components/invite-member-form"
+import { InvitationsList } from "@/features/workspaces/components/invitations-list"
 import { getWorkspaceMembers } from "@/features/workspaces/queries/get-workspace-members"
 import { MembersTable } from "@/features/workspaces/components/members-table"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
+import { getWorkspaceInvitations } from "@/features/workspaces/queries/get-workspace-invitations"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -36,6 +39,7 @@ export default async function DashboardPage() {
   const workspace = activeMembership.workspace
   const metrics = await getWorkspaceMetrics(workspace.id)
   const members = await getWorkspaceMembers(workspace.id)
+  const invitations = await getWorkspaceInvitations(workspace.id)
   const totalMetricValue = metrics.reduce(
     (sum, metric) => sum + metric.value,
     0
@@ -43,6 +47,7 @@ export default async function DashboardPage() {
   const latestMetric = metrics[0]
   const canCreateMetrics = canManageWorkspace(activeMembership.role)
   const canManageMembers = isWorkspaceOwner(activeMembership.role)
+  const canInviteMembers = canManageWorkspace(activeMembership.role)
 
   return (
     <div className="space-y-8">
@@ -90,6 +95,24 @@ export default async function DashboardPage() {
         </div>
 
         <CreateMetricForm canCreateMetrics={canCreateMetrics} />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold">
+              Pending invitations
+            </h2>
+
+            <p className="text-sm text-muted-foreground">
+              Track teammate onboarding links, roles, and expiration dates.
+            </p>
+          </div>
+
+          <InvitationsList invitations={invitations} />
+        </div>
+
+        <InviteMemberForm canInviteMembers={canInviteMembers} />
       </section>
 
       <section className="space-y-4">
