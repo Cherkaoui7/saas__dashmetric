@@ -31,8 +31,10 @@ function getActivityTone(type: ActivityType) {
     case "ROLE_UPDATED":
       return "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-200"
     case "SUBSCRIPTION_UPDATED":
-    default:
       return "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200"
+    case "FILE_UPLOADED":
+    default:
+      return "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-200"
   }
 }
 

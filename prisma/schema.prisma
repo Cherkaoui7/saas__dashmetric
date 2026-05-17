@@ -22,6 +22,7 @@ model User {
   sentInvitations Invitation[] @relation("SentInvitations")
   activities      Activity[]
   notifications   Notification[]
+  uploadedFiles   File[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -31,12 +32,14 @@ model Workspace {
   id          String       @id @default(cuid())
   name        String
   ownerId     String
+  logoUrl     String?
   owner       User         @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   memberships Membership[]
   metrics     Metric[]
   invitations Invitation[]
   subscription Subscription?
   activities  Activity[]
+  files       File[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -75,6 +78,13 @@ enum ActivityType {
   MEMBER_JOINED
   ROLE_UPDATED
   SUBSCRIPTION_UPDATED
+  FILE_UPLOADED
+}
+
+enum FileType {
+  IMAGE
+  DOCUMENT
+  OTHER
 }
 
 model Metric {
@@ -141,6 +151,22 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model File {
+  id           String   @id @default(cuid())
+  name         String
+  url          String
+  size         Int
+  type         FileType
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([uploadedById])
 }
 
 model Account {

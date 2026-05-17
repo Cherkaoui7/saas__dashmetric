@@ -24,6 +24,12 @@ import { MembersTable } from "@/features/workspaces/components/members-table"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 import { ActivityFeed } from "@/features/activity/components/activity-feed"
 import { getWorkspaceActivities } from "@/features/activity/queries/get-workspace-activities"
+import { AvatarUploadForm } from "@/features/storage/components/avatar-upload-form"
+import { FileList } from "@/features/storage/components/file-list"
+import { FileUploadForm } from "@/features/storage/components/file-upload-form"
+import { WorkspaceLogoUploadForm } from "@/features/storage/components/workspace-logo-upload-form"
+import { getUserMediaProfile } from "@/features/storage/queries/get-user-media-profile"
+import { getWorkspaceFiles } from "@/features/storage/queries/get-workspace-files"
 import { getWorkspaceInvitations } from "@/features/workspaces/queries/get-workspace-invitations"
 
 export default async function DashboardPage() {
@@ -50,6 +56,8 @@ export default async function DashboardPage() {
   const workspace = activeMembership.workspace
   const metrics = await getWorkspaceMetrics(workspace.id)
   const activities = await getWorkspaceActivities(workspace.id)
+  const files = await getWorkspaceFiles(workspace.id)
+  const currentUser = await getUserMediaProfile(session.user.id)
   const analytics = await getDashboardAnalytics(workspace.id)
   const trendData = await getMetricTrends(workspace.id)
   const insights = buildAnalyticsInsights(analytics, trendData)
@@ -60,8 +68,15 @@ export default async function DashboardPage() {
   const canManageMembers = isWorkspaceOwner(activeMembership.role)
   const canInviteMembers = canManageWorkspace(activeMembership.role)
   const canManageBilling = canManageWorkspace(activeMembership.role)
+  const canManageWorkspaceMedia = canManageWorkspace(activeMembership.role)
+  const canUploadFiles = Boolean(activeMembership)
   const currentPlan = subscription?.plan ?? "FREE"
   const currentLimits = PLAN_LIMITS[currentPlan]
+  const displayName =
+    currentUser?.name?.trim() ||
+    currentUser?.email ||
+    session.user.email ||
+    "User"
 
   return (
     <div className="space-y-8">
@@ -143,6 +158,38 @@ export default async function DashboardPage() {
         </div>
 
         <InviteMemberForm canInviteMembers={canInviteMembers} />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold">
+              Workspace files
+            </h2>
+
+            <p className="text-sm text-muted-foreground">
+              Workspace-scoped uploads with uploader metadata and secure
+              validation.
+            </p>
+          </div>
+
+          <FileList files={files} />
+        </div>
+
+        <div className="space-y-4">
+          <FileUploadForm canUploadFiles={canUploadFiles} />
+
+          <WorkspaceLogoUploadForm
+            canManageWorkspace={canManageWorkspaceMedia}
+            currentLogoUrl={workspace.logoUrl}
+            workspaceName={workspace.name}
+          />
+
+          <AvatarUploadForm
+            currentImageUrl={currentUser?.image}
+            displayName={displayName}
+          />
+        </div>
       </section>
 
       <section className="space-y-4">
