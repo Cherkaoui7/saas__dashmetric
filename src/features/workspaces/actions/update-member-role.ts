@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma"
 
 import { isWorkspaceOwner } from "@/features/auth/utils/permissions"
 import { createActivity } from "@/features/activity/services/create-activity"
+import { sendNotificationEmail } from "@/features/email/services/send-notification-email"
 import { createNotification } from "@/features/notifications/services/create-notification"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 
@@ -79,6 +80,12 @@ export async function updateMemberRole(
     title: "Role Updated",
     message: `Your role in ${currentMembership.workspace.name} has been updated to ${role}`,
     userId: targetMembership.userId,
+  })
+
+  await sendNotificationEmail({
+    message: `Your role in ${currentMembership.workspace.name} has been updated to ${role}.`,
+    subject: "Your workspace role was updated",
+    to: targetMembership.user.email,
   })
 
   revalidatePath("/dashboard")

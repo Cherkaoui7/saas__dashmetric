@@ -12,6 +12,7 @@ import { canManageWorkspace } from "@/features/auth/utils/permissions"
 import { getWorkspaceSubscription } from "@/features/billing/queries/get-workspace-subscription"
 import { PLAN_LIMITS } from "@/features/billing/utils/plans"
 import { createActivity } from "@/features/activity/services/create-activity"
+import { sendInvitationEmail } from "@/features/email/services/send-invitation-email"
 import { getActiveWorkspaceMembership } from "@/features/workspaces/queries/get-active-workspace-membership"
 
 const invitibleRoles = new Set<WorkspaceRole>(["ADMIN", "MEMBER"])
@@ -71,6 +72,12 @@ export async function inviteMember(
 
   if (currentUser?.email?.toLowerCase() === normalizedEmail) {
     throw new Error("You are already a member of this workspace")
+  }
+
+  const inviterEmail = currentUser?.email ?? session.user.email
+
+  if (!inviterEmail) {
+    throw new Error("Inviter email not found")
   }
 
   const existingUser = await prisma.user.findFirst({
@@ -137,9 +144,17 @@ export async function inviteMember(
 
   await createActivity({
     type: "MEMBER_INVITED",
-    message: `${session.user.email} invited ${normalizedEmail} as ${role}`,
+    message: `${inviterEmail} invited ${normalizedEmail} as ${role}`,
     workspaceId: membership.workspaceId,
     actorId: session.user.id,
+  })
+
+  await sendInvitationEmail({
+    invitationToken: invitation.token,
+    inviterEmail,
+    recipientEmail: normalizedEmail,
+    role,
+    workspaceName: membership.workspace.name,
   })
 
   revalidatePath("/dashboard")

@@ -2,6 +2,7 @@ import { hash } from "bcryptjs"
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
+import { sendWelcomeEmail } from "@/features/email/services/send-welcome-email"
 
 export async function POST(req: Request) {
     try {
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
                 ? name.trim()
                 : email.split("@")[0]
 
-        const user = await prisma.$transaction(async (tx) => {
+        const registration = await prisma.$transaction(async (tx) => {
             const createdUser = await tx.user.create({
                 data: {
                     name,
@@ -63,7 +64,19 @@ export async function POST(req: Request) {
                 },
             })
 
-            return createdUser
+            return {
+                user: createdUser,
+                workspaceName: workspace.name,
+            }
+        })
+
+        const { user, workspaceName } = registration
+
+        await sendWelcomeEmail({
+            email: user.email,
+            name: user.name?.trim() || workspaceOwnerName,
+            userId: user.id,
+            workspaceName,
         })
 
         const userWithoutPassword = {
