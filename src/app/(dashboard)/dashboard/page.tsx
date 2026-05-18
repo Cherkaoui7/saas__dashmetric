@@ -133,12 +133,14 @@ export default async function DashboardPage() {
         </div>
 
         <SubscriptionCard
+          active={subscription?.active ?? false}
           plan={currentPlan}
           metricsUsed={metrics.length}
           metricsLimit={currentLimits.metrics}
           membersUsed={members.length}
           membersLimit={currentLimits.members}
           canManageBilling={canManageBilling}
+          hasStripeCustomer={Boolean(subscription?.stripeCustomerId)}
         />
       </section>
 

@@ -121,6 +121,8 @@ model Subscription {
   id          String           @id @default(cuid())
   plan        SubscriptionPlan @default(FREE)
   active      Boolean          @default(true)
+  stripeCustomerId String?     @unique
+  stripeSubscriptionId String? @unique
   workspaceId String           @unique
   workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt   DateTime         @default(now())

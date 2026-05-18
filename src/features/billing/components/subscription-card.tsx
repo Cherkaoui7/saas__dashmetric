@@ -1,7 +1,7 @@
 "use client"
 
 import type { SubscriptionPlan } from "@prisma/client"
-import { useRouter } from "next/navigation"
+import { CreditCard, ExternalLink, Settings } from "lucide-react"
 import { useState, useTransition } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -13,80 +13,64 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-import { upgradeWorkspacePlan } from "@/features/billing/actions/upgrade-workspace-plan"
+import { createBillingPortalSession } from "@/features/billing/actions/create-billing-portal-session"
+import { createCheckoutSession } from "@/features/billing/actions/create-checkout-session"
 
 interface SubscriptionCardProps {
+  active: boolean
   plan: SubscriptionPlan
   metricsUsed: number
   metricsLimit: number
   membersUsed: number
   membersLimit: number
   canManageBilling: boolean
+  hasStripeCustomer: boolean
 }
 
 function formatLimit(limit: number) {
   return Number.isFinite(limit) ? limit.toString() : "Unlimited"
 }
 
-function getUpgradeTarget(plan: SubscriptionPlan) {
-  switch (plan) {
-    case "FREE":
-      return "PRO"
-    case "PRO":
-      return "ENTERPRISE"
-    case "ENTERPRISE":
-    default:
-      return null
-  }
-}
-
-function getUpgradeLabel(plan: SubscriptionPlan) {
-  switch (plan) {
-    case "FREE":
-      return "Upgrade to PRO"
-    case "PRO":
-      return "Upgrade to ENTERPRISE"
-    case "ENTERPRISE":
-    default:
-      return "Top tier active"
-  }
-}
+const checkoutPlans = ["PRO", "ENTERPRISE"] as const
 
 export function SubscriptionCard({
+  active,
   plan,
   metricsUsed,
   metricsLimit,
   membersUsed,
   membersLimit,
   canManageBilling,
+  hasStripeCustomer,
 }: SubscriptionCardProps) {
-  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const upgradeTarget = getUpgradeTarget(plan)
   const metricsAtLimit =
     Number.isFinite(metricsLimit) && metricsUsed >= metricsLimit
   const membersAtLimit =
     Number.isFinite(membersLimit) && membersUsed >= membersLimit
 
-  function handleUpgrade() {
-    if (!upgradeTarget) {
-      return
-    }
-
+  function redirectToStripe(
+    action: () => Promise<{ url: string }>,
+    actionName: string
+  ) {
     setError(null)
+    setPendingAction(actionName)
 
     startTransition(async () => {
       try {
-        await upgradeWorkspacePlan(upgradeTarget)
-        router.refresh()
-      } catch (upgradeError) {
+        const stripeSession = await action()
+        window.location.assign(stripeSession.url)
+      } catch (billingError) {
         setError(
-          upgradeError instanceof Error
-            ? upgradeError.message
-            : "Unable to update subscription."
+          billingError instanceof Error
+            ? billingError.message
+            : "Unable to start Stripe billing."
         )
+      } finally {
+        setPendingAction(null)
       }
     })
   }
@@ -96,7 +80,7 @@ export function SubscriptionCard({
       <CardHeader>
         <CardTitle>Subscription</CardTitle>
         <CardDescription>
-          Mock billing architecture with plan-based usage enforcement.
+          Stripe-backed billing with webhook-confirmed subscription state.
         </CardDescription>
       </CardHeader>
 
@@ -113,7 +97,7 @@ export function SubscriptionCard({
           </div>
 
           <span className="rounded-full border px-3 py-1 text-xs font-medium">
-            {plan}
+            {active ? "Active" : "Inactive"}
           </span>
         </div>
 
@@ -167,15 +151,65 @@ export function SubscriptionCard({
           </p>
         ) : null}
 
-        <Button
-          type="button"
-          className="w-full"
-          variant={plan === "ENTERPRISE" ? "outline" : "default"}
-          onClick={handleUpgrade}
-          disabled={!canManageBilling || !upgradeTarget || isPending}
-        >
-          {isPending ? "Updating plan..." : getUpgradeLabel(plan)}
-        </Button>
+        {plan === "FREE" ? (
+          <div className="space-y-2">
+            {checkoutPlans.map((checkoutPlan) => (
+              <Button
+                key={checkoutPlan}
+                type="button"
+                className="w-full"
+                variant={checkoutPlan === "PRO" ? "default" : "outline"}
+                onClick={() =>
+                  redirectToStripe(
+                    () => createCheckoutSession(checkoutPlan),
+                    checkoutPlan
+                  )
+                }
+                disabled={!canManageBilling || isPending}
+              >
+                <CreditCard />
+                {isPending && pendingAction === checkoutPlan
+                  ? "Opening checkout..."
+                  : `Start ${checkoutPlan} checkout`}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() =>
+              redirectToStripe(
+                createBillingPortalSession,
+                "portal"
+              )
+            }
+            disabled={!canManageBilling || isPending}
+          >
+            <Settings />
+            {isPending && pendingAction === "portal"
+              ? "Opening portal..."
+              : "Manage billing"}
+          </Button>
+        )}
+
+        {plan === "FREE" && hasStripeCustomer ? (
+          <Button
+            type="button"
+            className="w-full"
+            variant="outline"
+            onClick={() =>
+              redirectToStripe(
+                createBillingPortalSession,
+                "portal"
+              )
+            }
+            disabled={!canManageBilling || isPending}
+          >
+            <ExternalLink />
+            Open billing portal
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   )
